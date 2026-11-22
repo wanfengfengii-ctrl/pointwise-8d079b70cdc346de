@@ -1,0 +1,83 @@
+{
+  "recordings": [
+    {
+      "recording_id": "stable",
+      "initial_state": "t0",
+      "initial_rows": [0, 12, 5],
+      "events": [
+        {"op":"request","window":"top","first":1,"count":2},
+        {"op":"read","window":"top"},
+        {"op":"request","window":"bottom","first":3,"count":1},
+        {"op":"read","window":"bottom"}
+      ]
+    },
+    {
+      "recording_id": "scroll-missing",
+      "initial_state": "s0",
+      "initial_rows": [7, 11, 7, 13],
+      "events": [
+        {"op":"request","window":"start","first":1,"count":2},
+        {"op":"read","window":"start"},
+        {"op":"request","window":"shifted","first":1,"count":2},
+        {"op":"move","before":"s0","after":"s1","position":4,"target":1},
+        {"op":"read","window":"shifted"},
+        {"op":"rewrite","before":"s1","after":"s2","position":4,"mm":19},
+        {"op":"request","window":"after-rewrite","first":3,"count":2},
+        {"op":"read","window":"after-rewrite"}
+      ]
+    },
+    {
+      "recording_id": "scroll-complete",
+      "initial_state": "s0",
+      "initial_rows": [7, 11, 7, 13],
+      "events": [
+        {"op":"request","window":"start","first":1,"count":2},
+        {"op":"read","window":"start"},
+        {"op":"request","window":"shifted","first":1,"count":2},
+        {"op":"move","before":"s0","after":"s1","position":4,"target":1},
+        {"op":"read","window":"shifted"},
+        {"op":"request","window":"before-rewrite","first":4,"count":1},
+        {"op":"read","window":"before-rewrite"},
+        {"op":"rewrite","before":"s1","after":"s2","position":4,"mm":19},
+        {"op":"request","window":"after-rewrite","first":3,"count":2},
+        {"op":"read","window":"after-rewrite"}
+      ]
+    },
+    {
+      "recording_id": "move-only",
+      "initial_state": "m0",
+      "initial_rows": [3, 8, 3],
+      "events": [
+        {"op":"move","before":"m0","after":"m1","position":3,"target":1},
+        {"op":"request","window":"moved","first":1,"count":3},
+        {"op":"read","window":"moved"}
+      ]
+    },
+    {
+      "recording_id": "insert-delete",
+      "initial_state": "i0",
+      "initial_rows": [5, 9, 12],
+      "events": [
+        {"op":"request","window":"keep-old","first":2,"count":1},
+        {"op":"read","window":"keep-old"},
+        {"op":"insert","before":"i0","after":"i1","position":1,"mm":70},
+        {"op":"delete","before":"i1","after":"i2","position":3},
+        {"op":"insert","before":"i2","after":"i3","position":3,"mm":9},
+        {"op":"request","window":"post","first":1,"count":4},
+        {"op":"read","window":"post"}
+      ]
+    },
+    {
+      "recording_id": "same-value",
+      "initial_state": "r0",
+      "initial_rows": [7, 11, 7],
+      "events": [
+        {"op":"request","window":"head","first":1,"count":2},
+        {"op":"read","window":"head"},
+        {"op":"rewrite","before":"r0","after":"r1","position":3,"mm":7},
+        {"op":"request","window":"new-seven","first":3,"count":1},
+        {"op":"read","window":"new-seven"}
+      ]
+    }
+  ]
+}
