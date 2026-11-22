@@ -42,7 +42,7 @@ def load_json(raw: bytes) -> object:
         raise ValueError('fixed content nests too deeply') from exc
 
 
-def _record_data(entry: TimelineEntry) -> dict[str, object]:
+def encode_record(entry: TimelineEntry) -> dict[str, object]:
     if isinstance(entry, EditFact):
         return {'type': 'edit', 'kind': entry.kind, 'before': entry.before, 'after': entry.after,
                 'position': entry.position, 'target': entry.target}
@@ -55,7 +55,7 @@ def _record_data(entry: TimelineEntry) -> dict[str, object]:
 def encode_payload(payload: BundlePayload) -> bytes:
     return json_bytes({'recording_id': payload.recording_id,
                        'start': {'state_id': payload.start.state_id, 'row_count': payload.start.row_count},
-                       'records': [_record_data(entry) for entry in payload.records]})
+                       'records': [encode_record(entry) for entry in payload.records]})
 
 
 def _fields(data: object, fields: set[str], label: str) -> dict:
@@ -64,7 +64,7 @@ def _fields(data: object, fields: set[str], label: str) -> dict:
     return data
 
 
-def _read_record(data: object) -> TimelineEntry:
+def decode_record(data: object) -> TimelineEntry:
     if not isinstance(data, dict):
         raise ValueError('record must be an object')
     if data.get('type') == 'edit':
@@ -98,4 +98,4 @@ def decode_payload(raw: bytes) -> BundlePayload:
         raise ValueError('invalid recording identifier or records array')
     start = _fields(data['start'], {'state_id', 'row_count'}, 'shift start')
     return BundlePayload(data['recording_id'], ShiftStart(start['state_id'], start['row_count']),
-                         tuple(_read_record(entry) for entry in data['records']))
+                         tuple(decode_record(entry) for entry in data['records']))

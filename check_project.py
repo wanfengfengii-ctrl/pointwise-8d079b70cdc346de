@@ -1,4 +1,4 @@
-"""Run this project's full unittest suite from the repository root."""
+"""Run this project's full unittest suite and the source-handoff fixture."""
 import sys
 import unittest
 
@@ -23,7 +23,20 @@ def main():
           f'expected_failures={len(result.expectedFailures)} '
           f'unexpected_successes={len(result.unexpectedSuccesses)} '
           f'result={"PASS" if successful else "FAIL"}')
+    if not _fixture_passes():
+        print('SOURCE FIXTURE FAIL', file=sys.stderr)
+        successful = False
     return 0 if successful else 1
+
+
+def _fixture_passes() -> bool:
+    try:
+        import source_fixture
+        source_fixture.check()
+    except Exception as exc:  # noqa: BLE001 - a fixture failure must fail verification
+        print(f'SOURCE FIXTURE FAIL {exc}', file=sys.stderr)
+        return False
+    return True
 
 
 if __name__ == '__main__':

@@ -44,7 +44,7 @@ def seed_legacy(folder: str | Path) -> tuple[int, int]:
     return received_no, signed.result_no
 
 
-def _check_inputs() -> None:
+def _check_inputs(verbose: bool = True) -> None:
     events = {}
     for attempt, catalog in replay_inputs().items():
         start, count, portal = open_shift(catalog, RECORDING_ID)
@@ -59,8 +59,45 @@ def _check_inputs() -> None:
     tag = attest(b"example")
     assert verify_source(b"example", tag)
     assert not verify_source(b"another example", tag)
-    print({attempt: [getattr(e, "kind", getattr(e, "window_id", None)) for e in log]
-           for attempt, log in events.items()})
+    _check_certified(attest, verify_source)
+    if verbose:
+        print({attempt: [getattr(e, "kind", getattr(e, "window_id", None)) for e in log]
+               for attempt, log in events.items()})
+
+
+def check() -> None:
+    """Quiet entry used by the verify command."""
+    _check_inputs(verbose=False)
+
+
+def _check_certified(attest, verify_source) -> None:
+    """Exercise the certified path without printing anything but the summary."""
+    from tempfile import TemporaryDirectory
+
+    from archive.schema import SignedDraft
+    from review.decision import MissingOrigins
+
+    inputs = replay_inputs()
+
+    def run(attempt, chosen):
+        with TemporaryDirectory() as folder:
+            workspace = initialize_workspace(folder)
+            raw = capture_recording(inputs[attempt], RECORDING_ID, attempt_id=attempt,
+                                    attest=attest, select_windows=lambda positions: chosen)
+            number = receive(workspace.catalog, raw)
+            return reconcile_bundle(workspace.catalog, workspace.archive, number,
+                                    expected_recording_id=RECORDING_ID,
+                                    expected_attempt_id=attempt, verify_source=verify_source)
+
+    signed = run("B", (1, 3, 4))
+    assert isinstance(signed, SignedDraft)
+    assert tuple(line.mm for line in signed.lines) == (7, 11, 7, 13)
+    assert tuple(line.capture_sequence for line in signed.lines) == (1, 1, 4, 3)
+    gap = run("B", (1, 3))
+    assert isinstance(gap, MissingOrigins) and gap.positions == (3,)
+    full_a = run("A", (2, 4, 5))
+    assert isinstance(full_a, SignedDraft)
+    assert tuple(line.capture_sequence for line in full_a.lines) == (2, 2, 5, 4)
 
 
 if __name__ == "__main__":

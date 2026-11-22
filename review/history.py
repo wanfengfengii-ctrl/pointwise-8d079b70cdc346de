@@ -17,13 +17,15 @@ class ValidatedHistory:
     windows: tuple[tuple[int, CapturedWindow], ...]
 
 
-def validate_history(payload: BundlePayload) -> ValidatedHistory:
-    start = payload.start
+def validate_entries(start: ShiftStart,
+                     entries: object) -> ValidatedHistory:
     current = start.state_id
     counts = {current: start.row_count}
     edits = []
     windows = []
-    for sequence, entry in enumerate(payload.records, start=1):
+    for sequence, entry in entries:
+        if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
+            raise InvalidHistory('entry source sequence must be a positive integer')
         if isinstance(entry, CapturedWindow):
             windows.append((sequence, entry))
             continue
@@ -48,3 +50,7 @@ def validate_history(payload: BundlePayload) -> ValidatedHistory:
         except ValueError as exc:
             raise InvalidHistory(f'invalid window at event {sequence}: {exc}') from exc
     return ValidatedHistory(start, tuple(edits), tuple(windows))
+
+
+def validate_history(payload: BundlePayload) -> ValidatedHistory:
+    return validate_entries(payload.start, enumerate(payload.records, start=1))

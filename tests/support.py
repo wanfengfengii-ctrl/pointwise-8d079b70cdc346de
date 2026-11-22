@@ -63,8 +63,8 @@ class ProjectTest(unittest.TestCase):
     def submit(self, payload):
         return self.receive(pack(payload))
 
-    def decide(self, number):
-        return reconcile_bundle(self.workspace.catalog, self.workspace.archive, number)
+    def decide(self, number, **expected):
+        return reconcile_bundle(self.workspace.catalog, self.workspace.archive, number, **expected)
 
     def without_windows(self, recording_id, *window_ids):
         payload = self.payload(recording_id)

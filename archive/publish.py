@@ -1,7 +1,8 @@
+import json
 import sqlite3
 from pathlib import Path
 
-from archive.schema import DraftLine, FirstReceipt, SignedDraft
+from archive.schema import CertifiedDraft, DraftLine, FirstReceipt, SignedDraft
 from archive.shift_index import insert_result_header
 from portal.table import is_identifier
 from storage import open_store, valid_number
@@ -25,15 +26,25 @@ def _verified_lines(lines: tuple[DraftLine, ...]) -> tuple[DraftLine, ...]:
     return verified
 
 
+def _proof_text(source_proof: dict | None) -> str | None:
+    if source_proof is None:
+        return None
+    if not isinstance(source_proof, dict) or not is_identifier(source_proof.get('attempt_id')) \
+            or not isinstance(source_proof.get('material'), dict):
+        raise ValueError('source proof requires an attempt and verification material')
+    return json.dumps(source_proof, sort_keys=True, separators=(',', ':'), allow_nan=False)
+
+
 def publish_draft(path: str | Path, received_no: int, recording_id: str,
-                  lines: tuple[DraftLine, ...]) -> SignedDraft:
+                  lines: tuple[DraftLine, ...], *, source_proof: dict | None = None) -> SignedDraft:
     try:
         if not valid_number(received_no) or not is_identifier(recording_id):
             raise ValueError('draft requires an exact received number and recording identifier')
         lines = _verified_lines(lines)
+        proof_text = _proof_text(source_proof)
         with open_store(path) as connection, connection:
             connection.execute('BEGIN IMMEDIATE')
-            result = insert_result_header(connection, received_no, recording_id)
+            result = insert_result_header(connection, received_no, recording_id, proof_text)
             connection.executemany(
                 '''INSERT INTO draft_lines (result_no, origin_position, mm_decimal, state_id,
                        window_id, screen_position, capture_sequence) VALUES (?, ?, ?, ?, ?, ?, ?)''',
@@ -44,4 +55,6 @@ def publish_draft(path: str | Path, received_no: int, recording_id: str,
             receipt = FirstReceipt(cursor.lastrowid, result.result_no, received_no)
     except (sqlite3.Error, OSError, ValueError, TypeError) as exc:
         raise PublishFailed(str(exc)) from exc
-    return SignedDraft(result.result_no, received_no, recording_id, lines, receipt)
+    if source_proof is None:
+        return SignedDraft(result.result_no, received_no, recording_id, lines, receipt)
+    return CertifiedDraft(result.result_no, received_no, recording_id, lines, receipt, source_proof)
